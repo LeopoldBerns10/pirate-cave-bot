@@ -67,7 +67,11 @@ function initTracker(client) {
     } else if (action === 'plus5') {
       data.count += 5;
     } else if (action === 'white') {
-      await interaction.reply({ content: 'Quel est le nom de ce white bag ?', flags: 64 });
+      // Ici, on différé l'interaction pour collecter un message
+      await interaction.deferUpdate(); // Pour éviter l'expiration de l'interaction
+
+      await interaction.followUp({ content: 'Quel est le nom de ce white bag ?', ephemeral: true });
+
       const collector = interaction.channel.createMessageCollector({
         filter: m => m.author.id === interaction.user.id,
         max: 1,
@@ -90,9 +94,7 @@ function initTracker(client) {
 
     try {
       // Défère la mise à jour de l'interaction pour éviter que l'interaction expire
-      await interaction.deferUpdate();
-
-      // Mise à jour de l'interaction avec les nouvelles informations
+      await interaction.deferUpdate(); // Défère la mise à jour avant d'essayer de répondre
       await interaction.editReply({ embeds: [updatedEmbed], components: [row] });
     } catch (err) {
       if (err.code === '10062') {
@@ -142,7 +144,7 @@ async function sendMainStartButton(client) {
 
     try {
       // Défère l'interaction pour la rendre valide plus longtemps
-      await interaction.deferUpdate();
+      await interaction.deferUpdate(); // Défère l'interaction pour éviter l'expiration
       await interaction.editReply({ content: `🧾 Ton compteur est prêt, ${username} !`, flags: 64 });
       await channel.send({ embeds: [embed], components: [buttons] });
     } catch (err) {
