@@ -23,15 +23,15 @@ function createButtons(userId) {
   );
 }
 
-function getEmbed(userId, username = null) {
+function getEmbed(userId, displayName = null) {
   const count = trackerData[userId]?.count || 0;
   const drops = trackerData[userId]?.whites || [];
-  const displayName = username ? username : `<@${userId}>`;
+  const name = displayName || `<@${userId}>`;
 
   return new EmbedBuilder()
-    .setTitle(`📊 Compteur d'événements de ${displayName}`)
-    .setDescription(`• Événements farmés : **${count}**
-• White drops : ${drops.length > 0 ? drops.map((w, i) => `\n  ${trackerData[userId].positions[i]} : ${w}`) : "_Aucun pour l'instant_"}`)
+    .setTitle(`📊 Compteur d'événements de ${name}`)
+    .setDescription(\`• Événements farmés : **\${count}**
+• White drops : \${drops.length > 0 ? drops.map((w, i) => `\n  \${trackerData[userId].positions[i]} : \${w}`).join('') : "_Aucun pour l'instant_"}\`)
     .setColor(0x00AE86);
 }
 
@@ -75,7 +75,9 @@ function initTracker(client) {
     }
 
     saveData();
-    const updatedEmbed = getEmbed(targetUserId, interaction.user.username);
+
+    const member = await interaction.guild.members.fetch(targetUserId);
+    const updatedEmbed = getEmbed(targetUserId, member.displayName);
     const row = createButtons(targetUserId);
     await interaction.update({ embeds: [updatedEmbed], components: [row] });
   });
@@ -83,7 +85,7 @@ function initTracker(client) {
 
 async function sendMainStartButton(client) {
   const guild = client.guilds.cache.first();
-  const channel = guild.channels.cache.get('1370025441930510357'); // salon
+  const channel = guild.channels.cache.get('1370025441930510357'); // ID du salon où envoyer le bouton
 
   if (!channel) throw new Error('Salon introuvable !');
 
@@ -103,16 +105,17 @@ async function sendMainStartButton(client) {
     if (!interaction.isButton() || interaction.customId !== 'start_tracker') return;
 
     const userId = interaction.user.id;
-    const username = interaction.user.username;
+    const member = await interaction.guild.members.fetch(userId);
+    const displayName = member.displayName;
 
     if (!trackerData[userId]) {
       trackerData[userId] = { count: 0, whites: [], positions: [] };
       saveData();
     }
 
-    const embed = getEmbed(userId, username);
+    const embed = getEmbed(userId, displayName);
     const buttons = createButtons(userId);
-    await interaction.reply({ content: `🧾 Ton compteur est prêt, ${username} !`, ephemeral: true });
+    await interaction.reply({ content: `🧾 Ton compteur est prêt, ${displayName} !`, ephemeral: true });
     await channel.send({ embeds: [embed], components: [buttons] });
   });
 }
