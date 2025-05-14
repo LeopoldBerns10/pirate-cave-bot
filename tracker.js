@@ -14,10 +14,12 @@ if (fs.existsSync(dataFile)) {
 // Sauvegarde des données dans le fichier JSON
 function saveData() {
   fs.writeFileSync(dataFile, JSON.stringify(trackerData, null, 2));
+  console.log('Données sauvegardées dans event_tracker.json');
 }
 
 // Création des boutons pour interagir avec le compteur
 function createButtons(userId) {
+  console.log(`Création des boutons pour l'utilisateur ${userId}`);
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`plus1_${userId}`).setLabel('+1').setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId(`plus5_${userId}`).setLabel('+5').setStyle(ButtonStyle.Primary),
@@ -27,6 +29,7 @@ function createButtons(userId) {
 
 // Génération de l'embed qui affiche le compteur et les white drops
 function getEmbed(userId, username = null) {
+  console.log(`Génération de l'embed pour l'utilisateur ${userId}`);
   const count = trackerData[userId]?.count || 0;
   const drops = trackerData[userId]?.whites || [];
   const displayName = username ? username : `<@${userId}>`;
@@ -44,16 +47,23 @@ function getEmbed(userId, username = null) {
 
 // Fonction principale pour initialiser le suivi de l'utilisateur
 function initTracker(client) {
+  console.log('Initialisation du suivi des interactions');
+  
   client.on(Events.InteractionCreate, async interaction => {
+    console.log('Interaction reçue:', interaction.customId);
+
     if (!interaction.isButton()) return;
 
     const [action, targetUserId] = interaction.customId.split('_');
 
     // Vérification si l'utilisateur est bien celui qui doit répondre à l'interaction
     if (interaction.user.id !== targetUserId) {
+      console.log(`Interaction non autorisée de ${interaction.user.id}`);
       await interaction.reply({ content: '❌ Pas ton compteur, matelot !', flags: 64 });
       return;
     }
+
+    console.log(`Traitement de l'interaction pour l'utilisateur ${targetUserId}`);
 
     // Si l'utilisateur n'a pas de données dans le tracker, on en crée
     if (!trackerData[targetUserId]) {
@@ -64,10 +74,13 @@ function initTracker(client) {
 
     // Gestion des actions des boutons
     if (action === 'plus1') {
+      console.log(`Augmentation de 1 pour l'utilisateur ${targetUserId}`);
       data.count += 1;
     } else if (action === 'plus5') {
+      console.log(`Augmentation de 5 pour l'utilisateur ${targetUserId}`);
       data.count += 5;
     } else if (action === 'white') {
+      console.log(`Demande de white drop pour l'utilisateur ${targetUserId}`);
       await interaction.deferUpdate();  // Différer l'interaction avant d'envoyer une réponse
 
       // Demander le nom du "white drop"
@@ -80,6 +93,7 @@ function initTracker(client) {
       });
 
       collector.on('collect', msg => {
+        console.log(`White drop collecté : ${msg.content}`);
         data.whites.push(msg.content);
         data.positions.push(data.count);
         saveData();
@@ -97,7 +111,9 @@ function initTracker(client) {
       // Défère la mise à jour de l'interaction pour éviter l'expiration
       await interaction.deferUpdate();  // Déjà différée pour éviter l'expiration
       await interaction.editReply({ embeds: [updatedEmbed], components: [row] });
+      console.log('Réponse mise à jour avec succès');
     } catch (err) {
+      console.error('Erreur lors de l\'interaction:', err);
       if (err.code === '10062') {
         // Si l'interaction a expiré, envoyer un message de suivi
         console.error('Interaction expirée');
@@ -113,10 +129,15 @@ function initTracker(client) {
 
 // Fonction pour envoyer le message permanent avec le bouton
 async function sendMainStartButton(client) {
+  console.log('Envoi du message permanent avec le bouton');
+
   const guild = client.guilds.cache.first();
   const channel = guild.channels.cache.get('1370025441930510357'); // Remplace par l'ID de ton salon
 
-  if (!channel) throw new Error('Salon introuvable !');
+  if (!channel) {
+    console.log('Le salon est introuvable !');
+    throw new Error('Salon introuvable !');
+  }
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -131,7 +152,10 @@ async function sendMainStartButton(client) {
     components: [row]
   });
 
+  console.log('Message envoyé avec succès.');
+
   client.on(Events.InteractionCreate, async interaction => {
+    console.log('Interaction reçue:', interaction.customId);
     if (!interaction.isButton() || interaction.customId !== 'start_tracker') return;
 
     const userId = interaction.user.id;
@@ -151,7 +175,9 @@ async function sendMainStartButton(client) {
       await interaction.deferUpdate();  // Différé avant de répondre
       await interaction.editReply({ content: `🧾 Ton compteur est prêt, ${username} !`, flags: 64 });
       await channel.send({ embeds: [embed], components: [buttons] });
+      console.log('Réponse envoyée avec succès.');
     } catch (err) {
+      console.error('Erreur lors de l\'envoi du message :', err);
       if (err.code === '10062') {
         console.error('Interaction expirée');
         await interaction.followUp({ content: 'Désolé, cette interaction a expiré.', flags: 64 });
