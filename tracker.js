@@ -4,6 +4,7 @@ const fs = require('fs');
 const dataFile = 'event_tracker.json';
 let trackerData = {};
 
+// Chargement des données depuis le fichier JSON si elles existent, sinon initialisation
 if (fs.existsSync(dataFile)) {
   trackerData = JSON.parse(fs.readFileSync(dataFile));
 } else {
@@ -11,10 +12,12 @@ if (fs.existsSync(dataFile)) {
 }
 
 function saveData() {
+  // Sauvegarde des données dans le fichier JSON
   fs.writeFileSync(dataFile, JSON.stringify(trackerData, null, 2));
 }
 
 function createButtons(userId) {
+  // Création des boutons pour interagir avec le compteur
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`plus1_${userId}`).setLabel('+1').setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId(`plus5_${userId}`).setLabel('+5').setStyle(ButtonStyle.Primary),
@@ -23,6 +26,7 @@ function createButtons(userId) {
 }
 
 function getEmbed(userId, username = null) {
+  // Génération de l'embed qui affiche le compteur et les white drops
   const count = trackerData[userId]?.count || 0;
   const drops = trackerData[userId]?.whites || [];
   const displayName = username ? username : `<@${userId}>`;
@@ -85,14 +89,21 @@ function initTracker(client) {
     const row = createButtons(targetUserId);
 
     try {
-      // Important : utiliser deferUpdate() pour éviter l'expiration de l'interaction
-      await interaction.deferUpdate();  // Cette ligne "défère" la mise à jour pour répondre plus tard
+      // Défère la mise à jour de l'interaction pour éviter que l'interaction expire
+      await interaction.deferUpdate();
 
-      // Ensuite, mettre à jour l'interaction avec les nouvelles informations
+      // Mise à jour de l'interaction avec les nouvelles informations
       await interaction.editReply({ embeds: [updatedEmbed], components: [row] });
     } catch (err) {
-      console.error('Interaction expirée ou erreur inconnue:', err);
-      await interaction.followUp({ content: 'Désolé, cette interaction a expiré.', flags: 64 });
+      if (err.code === '10062') {
+        // Si l'interaction a expiré, envoyer un message de suivi
+        console.error('Interaction expirée');
+        await interaction.followUp({ content: 'Désolé, cette interaction a expiré.', flags: 64 });
+      } else {
+        // Autres erreurs, on les loggue
+        console.error('Erreur inconnue:', err);
+        await interaction.followUp({ content: 'Une erreur est survenue. Essaye à nouveau plus tard.', flags: 64 });
+      }
     }
   });
 }
@@ -130,15 +141,18 @@ async function sendMainStartButton(client) {
     const buttons = createButtons(userId);
 
     try {
-      // Défère la mise à jour de l'interaction
-      await interaction.deferUpdate();  // Cela prolonge la validité de l'interaction
-
-      // Envoie de la réponse après avoir différé l'interaction
+      // Défère l'interaction pour la rendre valide plus longtemps
+      await interaction.deferUpdate();
       await interaction.editReply({ content: `🧾 Ton compteur est prêt, ${username} !`, flags: 64 });
       await channel.send({ embeds: [embed], components: [buttons] });
     } catch (err) {
-      console.error('Erreur lors de l\'envoi du message :', err);
-      await interaction.followUp({ content: 'Une erreur est survenue. Essaye à nouveau plus tard.', flags: 64 });
+      if (err.code === '10062') {
+        console.error('Interaction expirée');
+        await interaction.followUp({ content: 'Désolé, cette interaction a expiré.', flags: 64 });
+      } else {
+        console.error('Erreur lors de l\'envoi du message :', err);
+        await interaction.followUp({ content: 'Une erreur est survenue. Essaye à nouveau plus tard.', flags: 64 });
+      }
     }
   });
 }
