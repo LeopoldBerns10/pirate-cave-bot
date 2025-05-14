@@ -1,8 +1,1 @@
-from pathlib import Path
-import json
-
-# Création d'un fichier JSON vierge pour le tracker
-empty_data = {}
-file_path = Path("/mnt/data/event_tracker.json")
-file_path.write_text(json.dumps(empty_data, indent=2), encoding="utf-8")
-file_path.name
+{}
