@@ -48,6 +48,10 @@ function initTracker(client) {
 
     const [action, targetUserId] = interaction.customId.split('_');
 
+    // Ajout de logs pour vérifier l'ID de l'utilisateur et celui du compteur
+    console.log(`Interaction reçue de ${interaction.user.username} (${interaction.user.id})`);
+    console.log(`Vérification du compteur pour l'utilisateur : ${targetUserId}`);
+
     // Vérification si l'utilisateur est bien celui qui doit répondre à l'interaction
     if (interaction.user.id !== targetUserId) {
       await interaction.reply({ content: '❌ Pas ton compteur, matelot !', flags: 64 });
@@ -56,6 +60,7 @@ function initTracker(client) {
 
     // Si l'utilisateur n'a pas de données dans le tracker, on en crée
     if (!trackerData[targetUserId]) {
+      console.log(`Création des données pour l'utilisateur ${interaction.user.username} (${targetUserId})`);
       trackerData[targetUserId] = { count: 0, whites: [], positions: [] };
     }
 
@@ -67,9 +72,10 @@ function initTracker(client) {
     } else if (action === 'plus5') {
       data.count += 5;
     } else if (action === 'white') {
-      // Ici, on différé l'interaction pour collecter un message
-      await interaction.deferUpdate(); // Pour éviter l'expiration de l'interaction
+      // Différer l'interaction avant de répondre
+      await interaction.deferUpdate();
 
+      // Demander le nom du "white drop"
       await interaction.followUp({ content: 'Quel est le nom de ce white bag ?', ephemeral: true });
 
       const collector = interaction.channel.createMessageCollector({
@@ -94,7 +100,9 @@ function initTracker(client) {
 
     try {
       // Défère la mise à jour de l'interaction pour éviter que l'interaction expire
-      await interaction.deferUpdate(); // Défère la mise à jour avant d'essayer de répondre
+      await interaction.deferUpdate();
+
+      // Mise à jour de l'interaction avec les nouvelles informations
       await interaction.editReply({ embeds: [updatedEmbed], components: [row] });
     } catch (err) {
       if (err.code === '10062') {
@@ -135,6 +143,7 @@ async function sendMainStartButton(client) {
     const username = interaction.user.username;
 
     if (!trackerData[userId]) {
+      console.log(`Création des données pour l'utilisateur ${interaction.user.username} (${userId})`);
       trackerData[userId] = { count: 0, whites: [], positions: [] };
       saveData();
     }
@@ -144,7 +153,8 @@ async function sendMainStartButton(client) {
 
     try {
       // Défère l'interaction pour la rendre valide plus longtemps
-      await interaction.deferUpdate(); // Défère l'interaction pour éviter l'expiration
+      await interaction.deferUpdate();
+
       await interaction.editReply({ content: `🧾 Ton compteur est prêt, ${username} !`, flags: 64 });
       await channel.send({ embeds: [embed], components: [buttons] });
     } catch (err) {
