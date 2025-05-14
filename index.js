@@ -1,14 +1,15 @@
-
 require('dotenv').config(); // 📦 Charge les variables d’environnement
 
-const { Client, GatewayIntentBits, Partials, PermissionsBitField } = require('discord.js');
-const { initTracker, sendMainStartButton } = require('./tracker'); // Import du tracker avec bouton
+const { Client, GatewayIntentBits, Partials, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Events } = require('discord.js');
+const fs = require('fs');
 
-// 🔐 Variables d'environnement
+// 🔐 Variables d’environnement
 const TOKEN = process.env.DISCORD_TOKEN;
 const GUILD_ID = process.env.GUILD_ID;
 const CATEGORY_ID = process.env.CATEGORY_ID;
 const MESSAGE_ID = process.env.MESSAGE_ID;
+const dataFile = 'event_tracker.json';
+let trackerData = {};
 
 // ⚙️ Création du client Discord
 const client = new Client({
@@ -22,18 +23,122 @@ const client = new Client({
   partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
-// ✅ Connexion du bot
-client.once('ready', () => {
-  console.log(`🤖 Connecté en tant que ${client.user.tag}`);
-  console.log("🔧 En attente d'une réaction 📜 sur le message ID :", MESSAGE_ID);
+// 🚀 Connexion à Discord
+client.login(TOKEN);
 
-  client.guilds.cache.forEach(guild => {
-    console.log(`➡️ Serveur : ${guild.name} (ID: ${guild.id})`);
+// Chargement des données depuis le fichier JSON si elles existent, sinon initialisation
+if (fs.existsSync(dataFile)) {
+  trackerData = JSON.parse(fs.readFileSync(dataFile));
+} else {
+  fs.writeFileSync(dataFile, JSON.stringify(trackerData, null, 2));
+}
+
+// Sauvegarde des données dans le fichier JSON
+function saveData() {
+  fs.writeFileSync(dataFile, JSON.stringify(trackerData, null, 2));
+  console.log('Données sauvegardées dans event_tracker.json');
+}
+
+// Création des boutons pour interagir avec le compteur
+function createButtons(userId) {
+  console.log(`Création des boutons pour l'utilisateur ${userId}`);
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`plus1_${userId}`).setLabel('+1').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`plus5_${userId}`).setLabel('+5').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`white_${userId}`).setLabel('💀 White Drop').setStyle(ButtonStyle.Danger)
+  );
+}
+
+// Génération de l'embed qui affiche le compteur et les white drops
+function getEmbed(userId, username = null) {
+  console.log(`Génération de l'embed pour l'utilisateur ${userId}`);
+  const count = trackerData[userId]?.count || 0;
+  const drops = trackerData[userId]?.whites || [];
+  const displayName = username ? username : `<@${userId}>`;
+
+  const dropLines = drops.map((w, i) => `${trackerData[userId].positions[i]} : ${w}`).join('\\n');
+
+  return new EmbedBuilder()
+    .setTitle(`📊 Compteur d'événements de ${displayName}`)
+    .setDescription(
+      `• Événements farmés : **${count}**\\n` +
+      `• White drops :\\n${dropLines || "_Aucun pour l'instant_"}`
+    )
+    .setColor(0x00AE86);
+}
+
+// Fonction principale pour initialiser le suivi de l'utilisateur
+function initTracker(client) {
+  console.log('Initialisation du suivi des interactions');
+  
+  client.on(Events.InteractionCreate, async interaction => {
+    console.log('Interaction reçue:', interaction.customId);
+
+    if (!interaction.isButton()) return;
+
+    const [action, targetUserId] = interaction.customId.split('_');
+
+    // Vérification si l'utilisateur est bien celui qui doit répondre à l'interaction
+    if (interaction.user.id !== targetUserId) {
+      console.log(`Interaction non autorisée de ${interaction.user.id}`);
+      await interaction.reply({ content: '❌ Pas ton compteur, matelot !', flags: 64 });
+      return;
+    }
+
+    console.log(`Traitement de l'interaction pour l'utilisateur ${targetUserId}`);
+
+    // Si l'utilisateur n'a pas de données dans le tracker, on en crée
+    if (!trackerData[targetUserId]) {
+      trackerData[targetUserId] = { count: 0, whites: [], positions: [] };
+    }
+
+    const data = trackerData[targetUserId];
+
+    // Gestion des actions des boutons
+    if (action === 'plus1') {
+      console.log(`Augmentation de 1 pour l'utilisateur ${targetUserId}`);
+      data.count += 1;
+    } else if (action === 'plus5') {
+      console.log(`Augmentation de 5 pour l'utilisateur ${targetUserId}`);
+      data.count += 5;
+    } else if (action === 'white') {
+      console.log(`Demande de white drop pour l'utilisateur ${targetUserId}`);
+      await interaction.deferUpdate();  // Différer l'interaction avant de répondre
+
+      // Demander le nom du "white drop"
+      await interaction.followUp({ content: 'Quel est le nom de ce white bag ?', ephemeral: true });
+
+      const collector = interaction.channel.createMessageCollector({
+        filter: m => m.author.id === interaction.user.id,
+        max: 1,
+        time: 15000
+      });
+
+      collector.on('collect', msg => {
+        console.log(`White drop collecté : ${msg.content}`);
+        data.whites.push(msg.content);
+        data.positions.push(data.count);
+        saveData();
+        msg.reply('💀 White enregistré avec succès !');
+      });
+
+      return;
+    }
+
+    saveData();
+    const updatedEmbed = getEmbed(targetUserId, interaction.user.username);
+    const row = createButtons(targetUserId);
+
+    try {
+      await interaction.deferUpdate();  // Différer avant de répondre
+      await interaction.editReply({ embeds: [updatedEmbed], components: [row] });
+      console.log('Réponse mise à jour avec succès');
+    } catch (err) {
+      console.error('Erreur lors de l\'interaction:', err);
+      await interaction.followUp({ content: 'Une erreur est survenue. Essaye à nouveau plus tard.', flags: 64 });
+    }
   });
-
-  // 🎯 Initialise le système de compteur personnalisé
-  initTracker(client);
-});
+}
 
 // 📌 Création de journal de bord sur réaction 📜
 client.on('messageReactionAdd', async (reaction, user) => {
@@ -80,29 +185,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
           PermissionsBitField.Flags.AttachFiles,
           PermissionsBitField.Flags.AddReactions
         ]
-      },
-      {
-        id: '1355909769776337177',
-        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.AddReactions]
-      },
-      {
-        id: '1355909983572856952',
-        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.AddReactions]
-      },
-      {
-        id: '1355917623778480269',
-        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.AddReactions],
-        deny: [PermissionsBitField.Flags.SendMessages]
-      },
-      {
-        id: '1355918648782360617',
-        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.AddReactions],
-        deny: [PermissionsBitField.Flags.SendMessages]
-      },
-      {
-        id: '1355919088844538038',
-        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.AddReactions],
-        deny: [PermissionsBitField.Flags.SendMessages]
       }
     ];
 
@@ -114,28 +196,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
     });
 
     const msg = await channel.send({
-      content: `🏴‍☠️ **Bienvenue dans ta cale personnelle, matelot <@${member.id}> !**
-
-T’as hérité de ta propre coque. Tu peux t’y étaler comme un Kraken sur son trône.  
-C’est chez toi ici. **Pas de règles. Pas de limites.** Tu fais ce que tu veux… sauf couler 😏
-
-🪙 Ce journal, c’est ton histoire. Tes loots. Tes légendes. Tes erreurs aussi.  
-Et qui sait ? Peut-être que les regards curieux de la guilde passeront par la fenêtre ouverte…
-
----
-
-⚓ **Fixe-toi un objectif, un vrai.**
-
-> ⚔️ Vaincre O3 en solo  
-> 💥 Réussir un Shatters HM les yeux fermés  
-> 🎯 Atteindre le White Star  
-> 🐉 Avoir le pet le plus massif de tout le navire  
-> 🏴‍☠️ Ou juste impressionner les autres avec ton style de jeu unique
-
-Quoi que tu choisisses...  
-**Fais-le bien. Fais-le grand. Fais-le Pirate Cave.**
-
-— 🦜 *Le scribe automatique, plume trempée dans le rhum*`
+      content: `🏴‍☠️ **Bienvenue dans ta cale personnelle, matelot <@${member.id}> !**\n\nT’as hérité de ta propre coque. Tu peux t’y étaler comme un Kraken sur son trône. C’est chez toi ici. **Pas de règles. Pas de limites.** Tu fais ce que tu veux… sauf couler 😏\n\n🪙 Ce journal, c’est ton histoire. Tes loots. Tes légendes. Tes erreurs aussi.\n\nQuoi que tu choisisses...\n**Fais-le bien. Fais-le grand. Fais-le Pirate Cave.**\n\n— 🦜 *Le scribe automatique, plume trempée dans le rhum*`
     });
 
     await msg.pin();
@@ -166,5 +227,31 @@ client.on('messageCreate', async (message) => {
   }
 });
 
-// 🚀 Connexion à Discord
-client.login(TOKEN);
+// Fonction pour envoyer le message permanent avec le bouton
+async function sendMainStartButton(client) {
+  console.log('Envoi du message permanent avec le bouton');
+
+  const guild = client.guilds.cache.first();
+  const channel = guild.channels.cache.get('1370025441930510357'); // Remplace par l'ID de ton salon
+
+  if (!channel) {
+    console.log('Le salon est introuvable !');
+    throw new Error('Salon introuvable !');
+  }
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('start_tracker')
+      .setLabel('🚀 Démarrer mon compteur')
+      .setStyle(ButtonStyle.Success)
+  );
+
+  // Envoi du message permanent
+  await channel.send({
+    content: `🧮 Héros, veux-tu suivre tes loots et tes événements ? Clique ici pour démarrer ton aventure !`,
+    components: [row]
+  });
+
+  console.log('Message envoyé avec succès.');
+}
+
