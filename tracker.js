@@ -1,4 +1,7 @@
+from pathlib import Path
 
+# Contenu complet et corrigé du tracker.js
+tracker_code = """
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, Events, EmbedBuilder } = require('discord.js');
 const fs = require('fs');
 
@@ -23,15 +26,19 @@ function createButtons(userId) {
   );
 }
 
-function getEmbed(userId, displayName = null) {
+function getEmbed(userId, username = null) {
   const count = trackerData[userId]?.count || 0;
   const drops = trackerData[userId]?.whites || [];
-  const name = displayName || `<@${userId}>`;
+  const displayName = username ? username : `<@${userId}>`;
+
+  const dropLines = drops.map((w, i) => `${trackerData[userId].positions[i]} : ${w}`).join('\\n');
 
   return new EmbedBuilder()
-    .setTitle(`📊 Compteur d'événements de ${name}`)
-    .setDescription(\`• Événements farmés : **\${count}**
-• White drops : \${drops.length > 0 ? drops.map((w, i) => `\n  \${trackerData[userId].positions[i]} : \${w}`).join('') : "_Aucun pour l'instant_"}\`)
+    .setTitle(`📊 Compteur d'événements de ${displayName}`)
+    .setDescription(
+      `• Événements farmés : **${count}**\\n` +
+      `• White drops :\\n${dropLines || "_Aucun pour l'instant_"}`
+    )
     .setColor(0x00AE86);
 }
 
@@ -75,9 +82,7 @@ function initTracker(client) {
     }
 
     saveData();
-
-    const member = await interaction.guild.members.fetch(targetUserId);
-    const updatedEmbed = getEmbed(targetUserId, member.displayName);
+    const updatedEmbed = getEmbed(targetUserId, interaction.user.username);
     const row = createButtons(targetUserId);
     await interaction.update({ embeds: [updatedEmbed], components: [row] });
   });
@@ -85,7 +90,7 @@ function initTracker(client) {
 
 async function sendMainStartButton(client) {
   const guild = client.guilds.cache.first();
-  const channel = guild.channels.cache.get('1370025441930510357'); // ID du salon où envoyer le bouton
+  const channel = guild.channels.cache.get('1370025441930510357'); // salon
 
   if (!channel) throw new Error('Salon introuvable !');
 
@@ -105,17 +110,16 @@ async function sendMainStartButton(client) {
     if (!interaction.isButton() || interaction.customId !== 'start_tracker') return;
 
     const userId = interaction.user.id;
-    const member = await interaction.guild.members.fetch(userId);
-    const displayName = member.displayName;
+    const username = interaction.user.username;
 
     if (!trackerData[userId]) {
       trackerData[userId] = { count: 0, whites: [], positions: [] };
       saveData();
     }
 
-    const embed = getEmbed(userId, displayName);
+    const embed = getEmbed(userId, username);
     const buttons = createButtons(userId);
-    await interaction.reply({ content: `🧾 Ton compteur est prêt, ${displayName} !`, ephemeral: true });
+    await interaction.reply({ content: `🧾 Ton compteur est prêt, ${username} !`, ephemeral: true });
     await channel.send({ embeds: [embed], components: [buttons] });
   });
 }
@@ -124,3 +128,9 @@ module.exports = {
   initTracker,
   sendMainStartButton
 };
+"""
+
+# Écriture dans un fichier .js pour l'utilisateur
+tracker_file_path = Path("/mnt/data/tracker.js")
+tracker_file_path.write_text(tracker_code, encoding="utf-8")
+tracker_file_path.name
