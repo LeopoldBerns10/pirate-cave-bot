@@ -1,7 +1,3 @@
-from pathlib import Path
-
-# Contenu complet et corrigé du tracker.js
-tracker_code = """
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, Events, EmbedBuilder } = require('discord.js');
 const fs = require('fs');
 
@@ -37,7 +33,7 @@ function getEmbed(userId, username = null) {
     .setTitle(`📊 Compteur d'événements de ${displayName}`)
     .setDescription(
       `• Événements farmés : **${count}**\\n` +
-      `• White drops :\\n${dropLines || "_Aucun pour l'instant_"}`
+      `• White drops :\\n${dropLines || "_Aucun pour l'instant_"}` 
     )
     .setColor(0x00AE86);
 }
@@ -120,17 +116,4 @@ async function sendMainStartButton(client) {
     const embed = getEmbed(userId, username);
     const buttons = createButtons(userId);
     await interaction.reply({ content: `🧾 Ton compteur est prêt, ${username} !`, ephemeral: true });
-    await channel.send({ embeds: [embed], components: [buttons] });
-  });
-}
-
-module.exports = {
-  initTracker,
-  sendMainStartButton
-};
-"""
-
-# Écriture dans un fichier .js pour l'utilisateur
-tracker_file_path = Path("/mnt/data/tracker.js")
-tracker_file_path.write_text(tracker_code, encoding="utf-8")
-tracker_file_path.name
+    await channel.send({ embeds: [embed], components: [buttons]()
