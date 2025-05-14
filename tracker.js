@@ -33,7 +33,7 @@ function getEmbed(userId, username = null) {
     .setTitle(`📊 Compteur d'événements de ${displayName}`)
     .setDescription(
       `• Événements farmés : **${count}**\\n` +
-      `• White drops :\\n${dropLines || "_Aucun pour l'instant_"}` 
+      `• White drops :\\n${dropLines || "_Aucun pour l'instant_"}`
     )
     .setColor(0x00AE86);
 }
@@ -116,4 +116,11 @@ async function sendMainStartButton(client) {
     const embed = getEmbed(userId, username);
     const buttons = createButtons(userId);
     await interaction.reply({ content: `🧾 Ton compteur est prêt, ${username} !`, ephemeral: true });
-    await channel.send({ embeds: [embed], components: [buttons]()
+    await channel.send({ embeds: [embed], components: [buttons] });
+  });
+}
+
+module.exports = {
+  initTracker,
+  sendMainStartButton
+};
