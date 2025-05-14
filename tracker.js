@@ -11,13 +11,13 @@ if (fs.existsSync(dataFile)) {
   fs.writeFileSync(dataFile, JSON.stringify(trackerData, null, 2));
 }
 
+// Sauvegarde des données dans le fichier JSON
 function saveData() {
-  // Sauvegarde des données dans le fichier JSON
   fs.writeFileSync(dataFile, JSON.stringify(trackerData, null, 2));
 }
 
+// Création des boutons pour interagir avec le compteur
 function createButtons(userId) {
-  // Création des boutons pour interagir avec le compteur
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`plus1_${userId}`).setLabel('+1').setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId(`plus5_${userId}`).setLabel('+5').setStyle(ButtonStyle.Primary),
@@ -25,8 +25,8 @@ function createButtons(userId) {
   );
 }
 
+// Génération de l'embed qui affiche le compteur et les white drops
 function getEmbed(userId, username = null) {
-  // Génération de l'embed qui affiche le compteur et les white drops
   const count = trackerData[userId]?.count || 0;
   const drops = trackerData[userId]?.whites || [];
   const displayName = username ? username : `<@${userId}>`;
@@ -42,15 +42,12 @@ function getEmbed(userId, username = null) {
     .setColor(0x00AE86);
 }
 
+// Fonction principale pour initialiser le suivi de l'utilisateur
 function initTracker(client) {
   client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isButton()) return;
 
     const [action, targetUserId] = interaction.customId.split('_');
-
-    // Ajout de logs pour vérifier l'ID de l'utilisateur et celui du compteur
-    console.log(`Interaction reçue de ${interaction.user.username} (${interaction.user.id})`);
-    console.log(`Vérification du compteur pour l'utilisateur : ${targetUserId}`);
 
     // Vérification si l'utilisateur est bien celui qui doit répondre à l'interaction
     if (interaction.user.id !== targetUserId) {
@@ -60,7 +57,6 @@ function initTracker(client) {
 
     // Si l'utilisateur n'a pas de données dans le tracker, on en crée
     if (!trackerData[targetUserId]) {
-      console.log(`Création des données pour l'utilisateur ${interaction.user.username} (${targetUserId})`);
       trackerData[targetUserId] = { count: 0, whites: [], positions: [] };
     }
 
@@ -99,7 +95,7 @@ function initTracker(client) {
     const row = createButtons(targetUserId);
 
     try {
-      // Défère la mise à jour de l'interaction pour éviter que l'interaction expire
+      // Défère la mise à jour de l'interaction pour éviter l'expiration
       await interaction.deferUpdate();
 
       // Mise à jour de l'interaction avec les nouvelles informations
@@ -118,6 +114,7 @@ function initTracker(client) {
   });
 }
 
+// Fonction pour envoyer le message permanent avec le bouton
 async function sendMainStartButton(client) {
   const guild = client.guilds.cache.first();
   const channel = guild.channels.cache.get('1370025441930510357'); // Remplace par l'ID de ton salon
@@ -131,8 +128,9 @@ async function sendMainStartButton(client) {
       .setStyle(ButtonStyle.Success)
   );
 
+  // Envoi du message permanent
   await channel.send({
-    content: `🧮 Tu veux suivre tes loots et drops ? Clique ici !`,
+    content: `🧮 Héros, veux-tu suivre tes loots et tes événements ? Clique ici pour démarrer ton aventure !`,
     components: [row]
   });
 
@@ -142,8 +140,8 @@ async function sendMainStartButton(client) {
     const userId = interaction.user.id;
     const username = interaction.user.username;
 
+    // Créer un tableau pour l'utilisateur si ce n'est pas déjà fait
     if (!trackerData[userId]) {
-      console.log(`Création des données pour l'utilisateur ${interaction.user.username} (${userId})`);
       trackerData[userId] = { count: 0, whites: [], positions: [] };
       saveData();
     }
@@ -152,9 +150,8 @@ async function sendMainStartButton(client) {
     const buttons = createButtons(userId);
 
     try {
-      // Défère l'interaction pour la rendre valide plus longtemps
+      // Différer l'interaction pour éviter l'expiration
       await interaction.deferUpdate();
-
       await interaction.editReply({ content: `🧾 Ton compteur est prêt, ${username} !`, flags: 64 });
       await channel.send({ embeds: [embed], components: [buttons] });
     } catch (err) {
