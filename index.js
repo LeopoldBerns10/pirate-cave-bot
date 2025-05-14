@@ -1,7 +1,4 @@
-from pathlib import Path
 
-# Création du contenu final de index.js avec la commande !sendtrackerbutton
-index_js_content = """
 require('dotenv').config(); // 📦 Charge les variables d’environnement
 
 const { Client, GatewayIntentBits, Partials, PermissionsBitField } = require('discord.js');
@@ -149,10 +146,10 @@ Quoi que tu choisisses...
   }
 });
 
-// 📦 Commande spéciale pour le capitaine : envoyer le bouton tracker
+// 📦 Commande spéciale pour envoyer le bouton tracker
 client.on('messageCreate', async (message) => {
   if (message.content === '!sendtrackerbutton') {
-    const ownerId = '278245562191577088'; // 🔐 Ton ID Discord
+    const ownerId = '278245562191577088';
 
     if (message.author.id !== ownerId) {
       await message.reply("🛑 Seul le capitaine peut invoquer le bouton du destin !");
@@ -171,9 +168,3 @@ client.on('messageCreate', async (message) => {
 
 // 🚀 Connexion à Discord
 client.login(TOKEN);
-"""
-
-# Sauvegarde dans un fichier
-final_index_path = Path("/mnt/data/index.js")
-final_index_path.write_text(index_js_content, encoding="utf-8")
-final_index_path.name
