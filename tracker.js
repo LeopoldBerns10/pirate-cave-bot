@@ -44,7 +44,7 @@ function initTracker(client) {
 
     const [action, targetUserId] = interaction.customId.split('_');
 
-    // Vérification si l'utilisateur est celui qui doit répondre à cette interaction
+    // Vérification si l'utilisateur est bien celui qui doit répondre à l'interaction
     if (interaction.user.id !== targetUserId) {
       await interaction.reply({ content: '❌ Pas ton compteur, matelot !', flags: 64 });
       return;
@@ -84,9 +84,12 @@ function initTracker(client) {
     const updatedEmbed = getEmbed(targetUserId, interaction.user.username);
     const row = createButtons(targetUserId);
 
-    // Mise à jour de l'interaction avec les nouveaux éléments
     try {
-      await interaction.update({ embeds: [updatedEmbed], components: [row] });
+      // Important : utiliser deferUpdate() pour éviter l'expiration de l'interaction
+      await interaction.deferUpdate();  // Cette ligne "défère" la mise à jour pour répondre plus tard
+
+      // Ensuite, mettre à jour l'interaction avec les nouvelles informations
+      await interaction.editReply({ embeds: [updatedEmbed], components: [row] });
     } catch (err) {
       console.error('Interaction expirée ou erreur inconnue:', err);
       await interaction.followUp({ content: 'Désolé, cette interaction a expiré.', flags: 64 });
@@ -96,7 +99,7 @@ function initTracker(client) {
 
 async function sendMainStartButton(client) {
   const guild = client.guilds.cache.first();
-  const channel = guild.channels.cache.get('1370025441930510357'); // salon
+  const channel = guild.channels.cache.get('1370025441930510357'); // Remplace par l'ID de ton salon
 
   if (!channel) throw new Error('Salon introuvable !');
 
@@ -126,9 +129,12 @@ async function sendMainStartButton(client) {
     const embed = getEmbed(userId, username);
     const buttons = createButtons(userId);
 
-    // Réponse au démarrage du compteur
     try {
-      await interaction.reply({ content: `🧾 Ton compteur est prêt, ${username} !`, flags: 64 });
+      // Défère la mise à jour de l'interaction
+      await interaction.deferUpdate();  // Cela prolonge la validité de l'interaction
+
+      // Envoie de la réponse après avoir différé l'interaction
+      await interaction.editReply({ content: `🧾 Ton compteur est prêt, ${username} !`, flags: 64 });
       await channel.send({ embeds: [embed], components: [buttons] });
     } catch (err) {
       console.error('Erreur lors de l\'envoi du message :', err);
