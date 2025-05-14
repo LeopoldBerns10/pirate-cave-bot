@@ -44,23 +44,26 @@ function initTracker(client) {
 
     const [action, targetUserId] = interaction.customId.split('_');
 
+    // Vérification si l'utilisateur est celui qui doit répondre à cette interaction
     if (interaction.user.id !== targetUserId) {
-      await interaction.reply({ content: '❌ Pas ton compteur, matelot !', ephemeral: true });
+      await interaction.reply({ content: '❌ Pas ton compteur, matelot !', flags: 64 });
       return;
     }
 
+    // Si l'utilisateur n'a pas de données dans le tracker, on en crée
     if (!trackerData[targetUserId]) {
       trackerData[targetUserId] = { count: 0, whites: [], positions: [] };
     }
 
     const data = trackerData[targetUserId];
 
+    // Gestion des actions des boutons
     if (action === 'plus1') {
       data.count += 1;
     } else if (action === 'plus5') {
       data.count += 5;
     } else if (action === 'white') {
-      await interaction.reply({ content: 'Quel est le nom de ce white bag ?', ephemeral: true });
+      await interaction.reply({ content: 'Quel est le nom de ce white bag ?', flags: 64 });
       const collector = interaction.channel.createMessageCollector({
         filter: m => m.author.id === interaction.user.id,
         max: 1,
@@ -80,7 +83,14 @@ function initTracker(client) {
     saveData();
     const updatedEmbed = getEmbed(targetUserId, interaction.user.username);
     const row = createButtons(targetUserId);
-    await interaction.update({ embeds: [updatedEmbed], components: [row] });
+
+    // Mise à jour de l'interaction avec les nouveaux éléments
+    try {
+      await interaction.update({ embeds: [updatedEmbed], components: [row] });
+    } catch (err) {
+      console.error('Interaction expirée ou erreur inconnue:', err);
+      await interaction.followUp({ content: 'Désolé, cette interaction a expiré.', flags: 64 });
+    }
   });
 }
 
@@ -115,8 +125,15 @@ async function sendMainStartButton(client) {
 
     const embed = getEmbed(userId, username);
     const buttons = createButtons(userId);
-    await interaction.reply({ content: `🧾 Ton compteur est prêt, ${username} !`, ephemeral: true });
-    await channel.send({ embeds: [embed], components: [buttons] });
+
+    // Réponse au démarrage du compteur
+    try {
+      await interaction.reply({ content: `🧾 Ton compteur est prêt, ${username} !`, flags: 64 });
+      await channel.send({ embeds: [embed], components: [buttons] });
+    } catch (err) {
+      console.error('Erreur lors de l\'envoi du message :', err);
+      await interaction.followUp({ content: 'Une erreur est survenue. Essaye à nouveau plus tard.', flags: 64 });
+    }
   });
 }
 
