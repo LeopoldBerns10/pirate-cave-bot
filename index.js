@@ -1,18 +1,10 @@
-require('dotenv').config(); // 📦 Charge les variables d’environnement depuis .env
+require('dotenv').config();
+const { Client, GatewayIntentBits, Partials } = require('discord.js');
+const { initTracker } = require('./tracker');
 
-const { Client, GatewayIntentBits, Partials, PermissionsBitField } = require('discord.js');
-
-// 🔐 Variables d'environnement
-const TOKEN = process.env.DISCORD_TOKEN;
-const GUILD_ID = process.env.GUILD_ID;
-const CATEGORY_ID = process.env.CATEGORY_ID;
-const MESSAGE_ID = process.env.MESSAGE_ID;
-
-// ⚙️ Création du client Discord avec les bons intents
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMessageReactions
@@ -20,158 +12,9 @@ const client = new Client({
   partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
-// ✅ Connexion du bot et affichage des infos serveur
 client.once('ready', () => {
-  console.log(`🤖 Connecté en tant que ${client.user.tag}`);
-  console.log("🔧 En attente d'une réaction 📜 sur le message ID :", MESSAGE_ID);
-  client.guilds.cache.forEach(guild => {
-    console.log(`➡️ Serveur : ${guild.name} (ID: ${guild.id})`);
-  });
+  console.log(`✅ Bot connecté : ${client.user.tag}`);
+  initTracker(client);
 });
 
-// 📌 Gestion des réactions ajoutées
-client.on('messageReactionAdd', async (reaction, user) => {
-  console.log(`⚠️ Une réaction a été ajoutée.`);
-
-  try {
-    if (user.bot) return;
-
-    // 🎣 Assure-toi que la réaction et le message sont bien complets
-    if (reaction.partial) await reaction.fetch();
-    if (reaction.message.partial) await reaction.message.fetch();
-
-    console.log(`📥 Réaction ajoutée : ${reaction.emoji.name} par ${user.username}`);
-
-    // 🛑 Vérifie que la réaction concerne bien le bon message et le bon emoji
-    if (reaction.message.id !== MESSAGE_ID) return;
-    if (reaction.emoji.name !== '📜') return;
-
-    console.log(`📜 Réaction validée par ${user.username}, création du journal...`);
-
-    const guild = await client.guilds.fetch(GUILD_ID);
-    const member = await guild.members.fetch(user.id);
-    const category = await guild.channels.fetch(CATEGORY_ID);
-    const botMember = await guild.members.fetch(client.user.id);
-
-    const channelName = `journal-${member.user.username.toLowerCase()}`;
-    const existing = guild.channels.cache.find(c => c.name === channelName);
-
-    if (existing) {
-      console.log(`⚠️ ${member.user.username} a déjà un journal.`);
-      await member.send("📝 Tu as déjà un journal, moussaillon !");
-      return;
-    }
-
-    // ⚙️ Définition des permissions selon les rôles
-    const overwrites = [
-      {
-        id: guild.roles.everyone,
-        deny: [PermissionsBitField.Flags.ViewChannel]
-      },
-      {
-        id: member.id,
-        allow: [
-          PermissionsBitField.Flags.ViewChannel,
-          PermissionsBitField.Flags.SendMessages,
-          PermissionsBitField.Flags.AddReactions,
-          PermissionsBitField.Flags.AttachFiles,
-          PermissionsBitField.Flags.EmbedLinks,
-          PermissionsBitField.Flags.UseExternalEmojis
-        ]
-      },
-      {
-        id: botMember.id,
-        allow: [
-          PermissionsBitField.Flags.ViewChannel,
-          PermissionsBitField.Flags.SendMessages,
-          PermissionsBitField.Flags.EmbedLinks,
-          PermissionsBitField.Flags.AttachFiles,
-          PermissionsBitField.Flags.AddReactions
-        ]
-      },
-      {
-        id: '1355909769776337177', // Founder
-        allow: [
-          PermissionsBitField.Flags.ViewChannel,
-          PermissionsBitField.Flags.SendMessages,
-          PermissionsBitField.Flags.AddReactions
-        ]
-      },
-      {
-        id: '1355909983572856952', // Leader
-        allow: [
-          PermissionsBitField.Flags.ViewChannel,
-          PermissionsBitField.Flags.SendMessages,
-          PermissionsBitField.Flags.AddReactions
-        ]
-      },
-      {
-        id: '1355917623778480269', // Officier
-        allow: [
-          PermissionsBitField.Flags.ViewChannel,
-          PermissionsBitField.Flags.AddReactions
-        ],
-        deny: [PermissionsBitField.Flags.SendMessages]
-      },
-      {
-        id: '1355918648782360617', // Membre
-        allow: [
-          PermissionsBitField.Flags.ViewChannel,
-          PermissionsBitField.Flags.AddReactions
-        ],
-        deny: [PermissionsBitField.Flags.SendMessages]
-      },
-      {
-        id: '1355919088844538038', // Initiate
-        allow: [
-          PermissionsBitField.Flags.ViewChannel,
-          PermissionsBitField.Flags.AddReactions
-        ],
-        deny: [PermissionsBitField.Flags.SendMessages]
-      }
-    ];
-
-    // 🏗️ Création du salon dans la bonne catégorie
-    const channel = await guild.channels.create({
-      name: channelName,
-      type: 0,
-      parent: category.id,
-      permissionOverwrites: overwrites
-    });
-
-    // 🦜 Message RP auto + épinglage
-    const msg = await channel.send({
-      content: `🏴‍☠️ **Bienvenue dans ta cale personnelle, matelot <@${member.id}> !**
-
-T’as hérité de ta propre coque. Tu peux t’y étaler comme un Kraken sur son trône.  
-C’est chez toi ici. **Pas de règles. Pas de limites.** Tu fais ce que tu veux… sauf couler 😏
-
-🪙 Ce journal, c’est ton histoire. Tes loots. Tes légendes. Tes erreurs aussi.  
-Et qui sait ? Peut-être que les regards curieux de la guilde passeront par la fenêtre ouverte…
-
----
-
-⚓ **Fixe-toi un objectif, un vrai.**
-
-> ⚔️ Vaincre O3 en solo  
-> 💥 Réussir un Shatters HM les yeux fermés  
-> 🎯 Atteindre le White Star  
-> 🐉 Avoir le pet le plus massif de tout le navire  
-> 🏴‍☠️ Ou juste impressionner les autres avec ton style de jeu unique
-
-Quoi que tu choisisses...  
-**Fais-le bien. Fais-le grand. Fais-le Pirate Cave.**
-
-— 🦜 *Le scribe automatique, plume trempée dans le rhum*`
-    });
-
-    await msg.pin(); // 📌 Épingle le message d’accueil
-    console.log(`✅ Salon ${channelName} créé avec succès.`);
-
-  } catch (err) {
-    console.error("❌ ERREUR pendant la création du journal :", err);
-  }
-});
-
-// 🚀 Connexion du bot à Discord
-client.login(TOKEN);
+client.login(process.env.DISCORD_TOKEN);
