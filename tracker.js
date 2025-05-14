@@ -68,8 +68,7 @@ function initTracker(client) {
     } else if (action === 'plus5') {
       data.count += 5;
     } else if (action === 'white') {
-      // Différer l'interaction avant de répondre
-      await interaction.deferUpdate();
+      await interaction.deferUpdate();  // Différer l'interaction avant d'envoyer une réponse
 
       // Demander le nom du "white drop"
       await interaction.followUp({ content: 'Quel est le nom de ce white bag ?', ephemeral: true });
@@ -96,9 +95,7 @@ function initTracker(client) {
 
     try {
       // Défère la mise à jour de l'interaction pour éviter l'expiration
-      await interaction.deferUpdate();
-
-      // Mise à jour de l'interaction avec les nouvelles informations
+      await interaction.deferUpdate();  // Déjà différée pour éviter l'expiration
       await interaction.editReply({ embeds: [updatedEmbed], components: [row] });
     } catch (err) {
       if (err.code === '10062') {
@@ -151,7 +148,7 @@ async function sendMainStartButton(client) {
 
     try {
       // Différer l'interaction pour éviter l'expiration
-      await interaction.deferUpdate();
+      await interaction.deferUpdate();  // Différé avant de répondre
       await interaction.editReply({ content: `🧾 Ton compteur est prêt, ${username} !`, flags: 64 });
       await channel.send({ embeds: [embed], components: [buttons] });
     } catch (err) {
