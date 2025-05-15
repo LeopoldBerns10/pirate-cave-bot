@@ -55,7 +55,7 @@ function initTracker(client) {
 
     // Sécurité : ne laisser que le bon utilisateur cliquer
     if (interaction.user.id !== targetUserId) {
-      await interaction.reply({ content: '❌ Pas ton compteur, matelot !', ephemeral: true });
+      await interaction.reply({ content: '❌ Pas ton compteur, matelot !', flags: 64 });
       return;
     }
     if (!trackerData[targetUserId]) trackerData[targetUserId] = { count: 0, whites: [], positions: [] };
@@ -64,7 +64,7 @@ function initTracker(client) {
     if (action === 'plus1') data.count += 1;
     else if (action === 'plus5') data.count += 5;
     else if (action === 'white') {
-      await interaction.reply({ content: 'Quel est le nom de ce white bag ?', ephemeral: true });
+      await interaction.reply({ content: 'Quel est le nom de ce white bag ?', flags: 64 });
 
       // Attendre la réponse de l'utilisateur (un seul message attendu)
       const filter = m => m.author.id === interaction.user.id;
@@ -79,7 +79,7 @@ function initTracker(client) {
         interaction.message.edit({ embeds: [getEmbed(targetUserId, interaction.user.username)], components: [createButtons(targetUserId)] });
       });
       collector.on('end', collected => {
-        if (!collected.size) interaction.followUp({ content: '⏰ Temps écoulé !', ephemeral: true });
+        if (!collected.size) interaction.followUp({ content: '⏰ Temps écoulé !', flags: 64 });
       });
       return;
     }
@@ -121,7 +121,7 @@ async function sendMainStartButton(client) {
       trackerData[userId] = { count: 0, whites: [], positions: [] };
       saveData();
     }
-    await interaction.reply({ content: `🧾 Ton compteur est prêt, ${username} !`, ephemeral: true });
+    await interaction.reply({ content: `🧾 Ton compteur est prêt, ${username} !`, flags: 64 });
     await channel.send({ embeds: [getEmbed(userId, username)], components: [createButtons(userId)] });
   });
 }
