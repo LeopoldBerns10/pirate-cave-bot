@@ -1,16 +1,14 @@
-
-require('dotenv').config(); // 📦 Charge les variables d’environnement
+require('dotenv').config();
 
 const { Client, GatewayIntentBits, Partials, PermissionsBitField } = require('discord.js');
-const { initTracker, sendMainStartButton } = require('./tracker'); // Import du tracker avec bouton
+const { initTracker, sendMainStartButton } = require('./tracker');
 
-// 🔐 Variables d'environnement
 const TOKEN = process.env.DISCORD_TOKEN;
 const GUILD_ID = process.env.GUILD_ID;
 const CATEGORY_ID = process.env.CATEGORY_ID;
 const MESSAGE_ID = process.env.MESSAGE_ID;
 
-// ⚙️ Création du client Discord
+// Création du client Discord
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -22,8 +20,7 @@ const client = new Client({
   partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
-// ✅ Connexion du bot
-client.once('ready', () => {
+client.once('ready', async () => {
   console.log(`🤖 Connecté en tant que ${client.user.tag}`);
   console.log("🔧 En attente d'une réaction 📜 sur le message ID :", MESSAGE_ID);
 
@@ -31,11 +28,19 @@ client.once('ready', () => {
     console.log(`➡️ Serveur : ${guild.name} (ID: ${guild.id})`);
   });
 
-  // 🎯 Initialise le système de compteur personnalisé
+  // 1. Initialise le système de compteur personnalisé
   initTracker(client);
+
+  // 2. Envoie automatiquement le bouton de démarrage dans le canal voulu (si besoin)
+  try {
+    await sendMainStartButton(client);
+    console.log("✅ Message principal du tracker envoyé !");
+  } catch (e) {
+    console.error("⚠️ Impossible d'envoyer le bouton principal :", e.message);
+  }
 });
 
-// 📌 Création de journal de bord sur réaction 📜
+// Création du journal de bord sur réaction
 client.on('messageReactionAdd', async (reaction, user) => {
   try {
     if (user.bot) return;
@@ -81,6 +86,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
           PermissionsBitField.Flags.AddReactions
         ]
       },
+      // Tes IDs spéciaux restent, c'est propre
       {
         id: '1355909769776337177',
         allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.AddReactions]
@@ -146,7 +152,7 @@ Quoi que tu choisisses...
   }
 });
 
-// 📦 Commande spéciale pour envoyer le bouton tracker
+// Commande spéciale pour renvoyer le bouton tracker à la main (optionnel)
 client.on('messageCreate', async (message) => {
   if (message.content === '!sendtrackerbutton') {
     const ownerId = '278245562191577088';
