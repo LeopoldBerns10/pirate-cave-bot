@@ -26,19 +26,52 @@ function createButtons(userId) {
   );
 }
 
-// Génération de l'embed pour l'utilisateur
+function getWhiteGrade(whiteCount) {
+  // Tableau des grades, paliers tous les 10 jusqu’à 100
+  const grades = [
+    { min: 0, title: "Novice naufragé", emoji: "🐀" },
+    { min: 10, title: "Corsaire débutant", emoji: "⚔️" },
+    { min: 20, title: "Chasseur de butin", emoji: "💰" },
+    { min: 30, title: "Terreur des mers", emoji: "🐙" },
+    { min: 40, title: "Capitaine white drop", emoji: "🏴‍☠️" },
+    { min: 50, title: "Maître des abysses", emoji: "🧜‍♂️" },
+    { min: 60, title: "Légende du néant", emoji: "👁️" },
+    { min: 70, title: "Bénédiction divine", emoji: "✨" },
+    { min: 80, title: "Héritier du loot", emoji: "👑" },
+    { min: 90, title: "Roi de la caverne", emoji: "🧠" },
+    { min: 100, title: "Drop éternel", emoji: "🔥" }
+  ];
+  // On prend le grade le plus haut possible selon le whiteCount
+  return grades.slice().reverse().find(g => whiteCount >= g.min) || grades[0];
+}
+
 function getEmbed(userId, username) {
   const count = trackerData[userId]?.count || 0;
-  const drops = trackerData[userId]?.whites || [];
+  const whites = trackerData[userId]?.whites || [];
   const positions = trackerData[userId]?.positions || [];
-  const dropLines = drops.map((w, i) => `${positions[i]} : ${w}`).join('\n');
+  const whiteCount = whites.length;
+
+  // Grade selon palier
+  const grade = getWhiteGrade(whiteCount);
+
+  // Ratio et estimation
+  const ratio = count > 0 ? ((whiteCount / count) * 100).toFixed(2) : "0";
+  const estimation = whiteCount > 0 ? (count / whiteCount).toFixed(2) : "∞";
+  const dropLines = whites.length
+    ? whites.map((w, i) => `${positions[i]} : ${w}`).join('\n')
+    : "_Aucun pour l'instant_";
+
   return new EmbedBuilder()
-    .setTitle(`📊 Compteur d'événements de ${username || `<@${userId}>`}`)
+    .setTitle(`${grade.emoji} ${grade.title} — Tableau de ${username || `<@${userId}>`}`)
     .setDescription(
-      `• Événements farmés : **${count}**\n` +
-      `• White drops :\n${dropLines || "_Aucun pour l'instant_"}`
+      `**🎯 Total events :** \`${count}\`\n` +
+      `**✨ White drops :** \`${whiteCount}\`\n` +
+      `**📊 Ratio :** \`${ratio}%\`\n` +
+      `**🧪 Estimation :** \`1 white / ~${estimation} events\`\n\n` +
+      `__White drops :__\n${dropLines}\n\n` +
+      `*${grade.title === "Drop éternel" ? "🔥 Tu es une légende vivante du loot !" : "Continue de farmer, la mer t’observe..."}*`
     )
-    .setColor(0x00AE86);
+    .setColor(0x0099ff);
 }
 
 // Initialisation unique du tracker (éviter de lier plusieurs fois l'event !)
