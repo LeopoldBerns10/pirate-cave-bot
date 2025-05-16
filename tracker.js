@@ -1,3 +1,22 @@
+// --- Définition des grades pour attribution de rôle auto
+const gradeRoles = [
+  { min: 100, name: "🔥 Drop éternel" },
+  { min: 90,  name: "🧠 Roi de la caverne" },
+  { min: 80,  name: "👑 Héritier du loot" },
+  { min: 70,  name: "✨ Bénédiction divine" },
+  { min: 60,  name: "👁️ Légende du néant" },
+  { min: 50,  name: "🧜‍♂️ Maître des abysses" },
+  { min: 40,  name: "🏴‍☠️ Capitaine white drop" },
+  { min: 30,  name: "🐙 Terreur des mers" },
+  { min: 20,  name: "💰 Chasseur de butin" },
+  { min: 10,  name: "⚔️ Corsaire débutant" },
+  { min: 0,   name: "🐀 Novice naufragé" }
+];
+
+function getGradeRoleName(whiteCount) {
+  return gradeRoles.find(g => whiteCount >= g.min).name;
+}
+
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, Events, EmbedBuilder } = require('discord.js');
 const { getUserData, saveUserData } = require('./db'); // <--- Import DB
 
@@ -87,24 +106,59 @@ function initTracker(client) {
   const filter = m => m.author.id === interaction.user.id;
   const collector = interaction.channel.createMessageCollector({ filter, max: 1, time: 15000 });
 
-  collector.on('collect', async msg => {
-    // 3. Mise à jour DB et tableau
-    data.whites.push(msg.content);
-    data.positions.push(data.count);
-    await saveUserData(targetUserId, interaction.user.username, data.count, data.whites, data.positions);
+collector.on('collect', async msg => {
+  // 1. Mise à jour DB et tableau
+  data.whites.push(msg.content);
+  data.positions.push(data.count);
+  await saveUserData(targetUserId, interaction.user.username, data.count, data.whites, data.positions);
 
-    // 4. Confirmation du bot et stockage pour suppression
-    const confirmMsg = await msg.reply('💀 White enregistré avec succès ! (tous ces messages disparaîtront dans 15 secondes ⏳)');
-    // 5. MAJ du tableau embed
-    interaction.message.edit({ embeds: [getEmbed(targetUserId, interaction.user.username, data)], components: [createButtons(targetUserId)] });
+  // 2. Attribution automatique du rôle pirate selon le nombre de whites
+  try {
+    const guild = interaction.guild;
+    const member = await guild.members.fetch(interaction.user.id);
+    const allRoleNames = gradeRoles.map(g => g.name);
+    const gradeRoleName = getGradeRoleName(data.whites.length);
 
-    // 6. Suppression clean de toute l’interaction après 15 secondes
-    setTimeout(async () => {
-      try { await questionMsg.delete(); } catch (e) {}
-      try { await msg.delete(); } catch (e) {}
-      try { await confirmMsg.delete(); } catch (e) {}
-    }, 15000);
-  });
+    // Cherche tous les rôles pirates existants
+    const pirateRoles = guild.roles.cache.filter(r => allRoleNames.includes(r.name));
+
+    // Supprime tous les anciens rôles pirates du membre
+    const toRemove = member.roles.cache.filter(r => allRoleNames.includes(r.name));
+    if (toRemove.size > 0) {
+      await member.roles.remove(toRemove);
+    }
+
+    // Attribue le nouveau rôle si trouvé
+    const newRole = pirateRoles.find(r => r.name === gradeRoleName);
+    if (newRole) {
+      await member.roles.add(newRole);
+      // Message temporaire d'upgrade de grade
+      await msg.reply(`🏴‍☠️ **Nouveau grade obtenu** : ${gradeRoleName} !`);
+    } else {
+      await msg.reply(`⚓ Le rôle "${gradeRoleName}" n'a pas été trouvé sur le serveur (contacte un admin).`);
+    }
+  } catch (err) {
+    console.error("Erreur attribution rôle pirate :", err);
+    await msg.reply("⚠️ Impossible de mettre à jour ton grade, permissions manquantes ou autre souci.");
+  }
+
+  // 3. Confirmation du bot et stockage pour suppression
+  const confirmMsg = await msg.reply('💀 White enregistré avec succès ! (tous ces messages disparaîtront dans 15 secondes ⏳)');
+  // 4. MAJ du tableau embed
+  interaction.message.edit({ embeds: [getEmbed(targetUserId, interaction.user.username, data)], components: [createButtons(targetUserId)] });
+
+  // 5. Suppression clean de toute l’interaction après 15 secondes
+  setTimeout(async () => {
+    try { await questionMsg.delete(); } catch (e) {}
+    try { await msg.delete(); } catch (e) {}
+    try { 
+      // Supprime tous les messages envoyés par le bot en réponse à ce drop (upgrade de grade, white enregistré, etc.)
+      const fetched = await msg.channel.messages.fetch({ after: msg.id, limit: 5 });
+      fetched.forEach(m => { if (m.author.id === interaction.client.user.id) m.delete().catch(()=>{}); });
+    } catch (e) {}
+  }, 15000);
+});
+
 
   collector.on('end', collected => {
     if (!collected.size) interaction.followUp({ content: '⏰ Temps écoulé !', flags: 64 });
