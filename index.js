@@ -174,3 +174,27 @@ client.on('messageCreate', async (message) => {
 
 // 🚀 Connexion à Discord
 client.login(TOKEN);
+
+client.on('messageCreate', async (message) => {
+  if (message.content === '!createroles' && message.member.permissions.has("Administrator")) {
+    const guild = message.guild;
+    let created = [];
+    for (const grade of gradeRoles) {
+      let role = guild.roles.cache.find(r => r.name === grade.name);
+      if (!role) {
+        role = await guild.roles.create({
+          name: grade.name,
+          color: grade.color,
+          mentionable: true,
+          reason: "Création auto des grades White Drop"
+        });
+        created.push(role.name);
+      }
+    }
+    if (created.length) {
+      await message.reply(`🏴‍☠️ Rôles créés :\n${created.map(r => `\`${r}\``).join('\n')}`);
+    } else {
+      await message.reply("✅ Tous les rôles existent déjà, rien à faire capitaine !");
+    }
+  }
+});
