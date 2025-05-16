@@ -112,7 +112,7 @@ collector.on('collect', async msg => {
   data.positions.push(data.count);
   await saveUserData(targetUserId, interaction.user.username, data.count, data.whites, data.positions);
 
-  // 2. Attribution automatique du rôle pirate selon le nombre de whites
+  // --- Attribution automatique du rôle pirate selon le nombre de whites
   try {
     const guild = interaction.guild;
     const member = await guild.members.fetch(interaction.user.id);
@@ -122,19 +122,30 @@ collector.on('collect', async msg => {
     // Cherche tous les rôles pirates existants
     const pirateRoles = guild.roles.cache.filter(r => allRoleNames.includes(r.name));
 
+    // === LOGS DEBUG COMPLETS ===
+    console.log("------ [DEBUG PROMOTION PIRATE] ------");
+    console.log("Utilisateur :", interaction.user.username, "| ID :", interaction.user.id);
+    console.log("Nombre de white drops :", data.whites.length);
+    console.log("Grade cible :", gradeRoleName);
+    console.log("Rôles pirates existants :", pirateRoles.map(r => r.name));
+    console.log("Rôles possédés actuellement :", member.roles.cache.map(r => r.name));
+    // ===========================
+
     // Supprime tous les anciens rôles pirates du membre
     const toRemove = member.roles.cache.filter(r => allRoleNames.includes(r.name));
     if (toRemove.size > 0) {
       await member.roles.remove(toRemove);
+      console.log("Rôles supprimés du membre :", toRemove.map(r => r.name));
     }
 
     // Attribue le nouveau rôle si trouvé
     const newRole = pirateRoles.find(r => r.name === gradeRoleName);
     if (newRole) {
       await member.roles.add(newRole);
-      // Message temporaire d'upgrade de grade
+      console.log("✅ Attribution du rôle :", newRole.name);
       await msg.reply(`🏴‍☠️ **Nouveau grade obtenu** : ${gradeRoleName} !`);
     } else {
+      console.log("❌ Le rôle cible n'a pas été trouvé sur le serveur !");
       await msg.reply(`⚓ Le rôle "${gradeRoleName}" n'a pas été trouvé sur le serveur (contacte un admin).`);
     }
   } catch (err) {
