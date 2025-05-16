@@ -76,22 +76,42 @@ function initTracker(client) {
     if (action === 'plus1') data.count += 1;
     else if (action === 'plus5') data.count += 5;
     else if (action === 'white') {
-      await interaction.reply({ content: 'Quel est le nom de ce white bag ?', flags: 64 });
-      const filter = m => m.author.id === interaction.user.id;
-      const collector = interaction.channel.createMessageCollector({ filter, max: 1, time: 15000 });
+  // 1. Le bot pose la question et stocke le message pour suppression
+  const questionMsg = await interaction.reply({ 
+    content: '⚓ Quel est le nom de ce white bag ? (réponds juste en-dessous — tout sera supprimé dans 15 secondes après validation !) 🧹', 
+    fetchReply: true, // Pour récupérer l'ID du message bot
+    flags: 64 
+  });
 
-      collector.on('collect', async msg => {
-        data.whites.push(msg.content);
-        data.positions.push(data.count);
-        await saveUserData(targetUserId, interaction.user.username, data.count, data.whites, data.positions);
-        msg.reply('💀 White enregistré avec succès !');
-        interaction.message.edit({ embeds: [getEmbed(targetUserId, interaction.user.username, data)], components: [createButtons(targetUserId)] });
-      });
-      collector.on('end', collected => {
-        if (!collected.size) interaction.followUp({ content: '⏰ Temps écoulé !', flags: 64 });
-      });
-      return;
-    }
+  // 2. Prépare le collector pour UNE réponse
+  const filter = m => m.author.id === interaction.user.id;
+  const collector = interaction.channel.createMessageCollector({ filter, max: 1, time: 15000 });
+
+  collector.on('collect', async msg => {
+    // 3. Mise à jour DB et tableau
+    data.whites.push(msg.content);
+    data.positions.push(data.count);
+    await saveUserData(targetUserId, interaction.user.username, data.count, data.whites, data.positions);
+
+    // 4. Confirmation du bot et stockage pour suppression
+    const confirmMsg = await msg.reply('💀 White enregistré avec succès ! (tous ces messages disparaîtront dans 15 secondes ⏳)');
+    // 5. MAJ du tableau embed
+    interaction.message.edit({ embeds: [getEmbed(targetUserId, interaction.user.username, data)], components: [createButtons(targetUserId)] });
+
+    // 6. Suppression clean de toute l’interaction après 15 secondes
+    setTimeout(async () => {
+      try { await questionMsg.delete(); } catch (e) {}
+      try { await msg.delete(); } catch (e) {}
+      try { await confirmMsg.delete(); } catch (e) {}
+    }, 15000);
+  });
+
+  collector.on('end', collected => {
+    if (!collected.size) interaction.followUp({ content: '⏰ Temps écoulé !', flags: 64 });
+  });
+  return;
+}
+
 
     await saveUserData(targetUserId, interaction.user.username, data.count, data.whites, data.positions);
 
