@@ -175,6 +175,22 @@ client.on('messageCreate', async (message) => {
 // 🚀 Connexion à Discord
 client.login(TOKEN);
 
+// === BLOC CRÉATION ROLES GRADES PIRATES (À COLLER À LA FIN DE index.js) ===
+
+const gradeRoles = [
+  { name: "🐀 Novice naufragé", color: 0xA0A0A0 },
+  { name: "⚔️ Corsaire débutant", color: 0x808080 },
+  { name: "💰 Chasseur de butin", color: 0xFFD700 },
+  { name: "🐙 Terreur des mers", color: 0x00BFFF },
+  { name: "🏴‍☠️ Capitaine white drop", color: 0x333333 },
+  { name: "🧜‍♂️ Maître des abysses", color: 0x9400D3 },
+  { name: "👁️ Légende du néant", color: 0x1E90FF },
+  { name: "✨ Bénédiction divine", color: 0xF8F8FF },
+  { name: "👑 Héritier du loot", color: 0xFFC0CB },
+  { name: "🧠 Roi de la caverne", color: 0xFF4500 },
+  { name: "🔥 Drop éternel", color: 0xFF0000 }
+];
+
 client.on('messageCreate', async (message) => {
   if (message.content === '!createroles' && message.member.permissions.has("Administrator")) {
     const guild = message.guild;
@@ -192,9 +208,9 @@ client.on('messageCreate', async (message) => {
       }
     }
     if (created.length) {
-      await message.reply(`🏴‍☠️ Rôles créés :\n${created.map(r => `\`${r}\``).join('\n')}`);
+      await message.reply(`🏴‍☠️ **Tous les rôles pirates sont montés à bord, capitaine !**\n\nRôles créés :\n${created.map(r => `\`${r}\``).join('\n')}`);
     } else {
-      await message.reply("✅ Tous les rôles existent déjà, rien à faire capitaine !");
+      await message.reply("✅ Tous les rôles pirates existaient déjà. Rien à ajouter, la cale est pleine !");
     }
   }
 });
