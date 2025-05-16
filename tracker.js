@@ -6,13 +6,17 @@ let trackerData = {};
 
 // Chargement/Sauvegarde données
 function loadData() {
+  console.log("Chemin de lecture du fichier JSON :", require('path').resolve(dataFile));
   if (fs.existsSync(dataFile)) {
     trackerData = JSON.parse(fs.readFileSync(dataFile));
+    console.log('Données chargées:', trackerData);
   } else {
     trackerData = {};
     saveData();
+    console.log('Nouveau fichier JSON créé');
   }
 }
+
 function saveData() {
   fs.writeFileSync(dataFile, JSON.stringify(trackerData, null, 2));
 }
