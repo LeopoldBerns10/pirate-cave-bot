@@ -16,6 +16,12 @@ function loadData() {
     console.log('Nouveau fichier JSON créé');
   }
 }
+function saveData() {
+  fs.writeFileSync(dataFile, JSON.stringify(trackerData, null, 2));
+  // Backup automatique à chaque sauvegarde (peux adapter selon le besoin)
+  fs.writeFileSync('event_tracker_backup.json', JSON.stringify(trackerData, null, 2));
+}
+
 
 function saveData() {
   fs.writeFileSync(dataFile, JSON.stringify(trackerData, null, 2));
